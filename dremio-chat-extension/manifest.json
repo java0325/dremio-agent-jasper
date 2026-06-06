@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Dremio Chat Assistant",
+  "version": "1.2.0",
+  "description": "localhost:9047 Dremio 챗봇. Ollama Qwen3.5 sLLM + Dremio 실시간 스키마 연동.",
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:9047/*",
+    "http://localhost:11434/*"
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost:9047/*",
+        "https://localhost:9047/*"
+      ],
+      "js": ["src/content/main.tsx"],
+      "run_at": "document_idle"
+    }
+  ]
+}
