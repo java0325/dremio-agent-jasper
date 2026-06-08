@@ -21,6 +21,11 @@ DREMIO SQL RULES (must follow strictly):
 - String literal casts like 'MM'::TEXT are invalid — write just 'MM'
 - Column aliases must be ASCII English only — no Korean/non-ASCII in SQL
 - Reserved words used as aliases must be double-quoted: AS "month", AS "year", AS "rank"
+- ALWAYS qualify ALL column references with table alias (e.g. o.order_id, oi.quantity, p.category)
+  — Never use bare column names like order_id, quantity without table prefix (causes ambiguous column error)
+- RANK() OVER: PARTITION BY time dimension only (not by category). ORDER BY the aggregated metric DESC
+  Correct: RANK() OVER (PARTITION BY TO_CHAR(o.order_date,'YYYY-MM') ORDER BY SUM(oi.quantity*oi.unit_price) DESC)
+- ORDER BY must reference column aliases defined in SELECT, not bare reserved words
 `.trim();
 
 // ────────────────────────────────────────────────────────────
@@ -56,17 +61,23 @@ export const KOREAN_ANALYSIS_TERMS: Record<string, string> = {
 
 /** SampleSalesDB 테이블별 컬럼 목록 및 사용 힌트 */
 export const SCHEMA_HINTS = `
-SampleSalesDB schema hints (use ONLY these exact column names):
-  orders (alias o):       order_id, customer_id, order_date, status, total_amount
-  order_items (alias oi): item_id, order_id, product_id, quantity, unit_price
-  products (alias p):     product_id, product_name, category, price, stock_quantity
-  customers (alias c):    customer_id, first_name, last_name, email, phone, city, country
+SampleSalesDB schema hints (use ONLY these exact column names, ALWAYS with table alias prefix):
+  orders (alias o):       o.order_id, o.customer_id, o.order_date, o.status, o.total_amount
+  order_items (alias oi): oi.item_id, oi.order_id, oi.product_id, oi.quantity, oi.unit_price
+  products (alias p):     p.product_id, p.product_name, p.category, p.price, p.stock_quantity
+  customers (alias c):    c.customer_id, c.first_name, c.last_name, c.email, c.phone, c.city, c.country
 
 Key rules:
-- quantity, unit_price → "order_items" (oi) only, NOT "orders"
-- item_id → "order_items" (oi.item_id), NEVER o.item_id
+- quantity, unit_price → oi (order_items) only, NOT o (orders)
+- item_id → oi.item_id only, NEVER o.item_id
+- order_id exists in BOTH orders and order_items — always qualify: o.order_id or oi.order_id
 - For sales amount: SUM(oi.quantity * oi.unit_price)
 - For month grouping: GROUP BY TO_CHAR(o.order_date, 'YYYY-MM')
+- COUNT(DISTINCT o.order_id) for order count — always qualified
+- Standard join pattern:
+    FROM "SampleSalesDB"."sales".orders o
+    JOIN "SampleSalesDB"."sales".order_items oi ON o.order_id = oi.order_id
+    JOIN "SampleSalesDB"."sales".products p ON oi.product_id = p.product_id
 `.trim();
 
 // ────────────────────────────────────────────────────────────
@@ -75,21 +86,23 @@ Key rules:
 
 /** 자주 쓰이는 표준 SQL 패턴 모음 */
 export const SQL_TEMPLATES = {
-  /** 월별 카테고리 매출 순위 */
+  /** 연도-월별 카테고리 매출 순위 [검증완료] */
   monthlyCategoryRank: `
 SELECT
-  TO_CHAR(o.order_date, 'YYYY-MM') AS order_month,
+  TO_CHAR(o.order_date, 'YYYY-MM') AS year_month,
   p.category,
-  SUM(oi.quantity * oi.unit_price) AS total_revenue,
-  COUNT(DISTINCT o.order_id) AS order_count,
-  RANK() OVER (PARTITION BY TO_CHAR(o.order_date, 'YYYY-MM')
-               ORDER BY SUM(oi.quantity * oi.unit_price) DESC) AS sales_rank
+  SUM(oi.quantity * oi.unit_price) AS total_sales_amount,
+  COUNT(DISTINCT o.order_id) AS transaction_count,
+  RANK() OVER (
+    PARTITION BY TO_CHAR(o.order_date, 'YYYY-MM')
+    ORDER BY SUM(oi.quantity * oi.unit_price) DESC
+  ) AS sales_rank
 FROM "SampleSalesDB"."sales".orders o
 JOIN "SampleSalesDB"."sales".order_items oi ON o.order_id = oi.order_id
 JOIN "SampleSalesDB"."sales".products p ON oi.product_id = p.product_id
-WHERE o.status IS NOT NULL AND o.total_amount > 0
+WHERE o.status != 'cancelled'
 GROUP BY TO_CHAR(o.order_date, 'YYYY-MM'), p.category
-ORDER BY order_month DESC, sales_rank ASC
+ORDER BY year_month DESC, sales_rank ASC
 LIMIT 20`.trim(),
 
   /** 카테고리별 총매출 집계 */
