@@ -94,6 +94,8 @@ function sanitizeSQL(sql: string): string {
   );
 
   // ── 3. PostgreSQL :: 캐스트 → CAST(expr AS TYPE) ──
+  // 문자열 리터럴::TYPE → 리터럴 그대로 ('MM'::TEXT → 'MM')
+  result = result.replace(/'([^']*)'\s*::\s*[A-Za-z]+/g, "'$1'");
   // FUNC(args)::TYPE 패턴 먼저 처리 (단일 깊이 괄호)
   result = result.replace(
     /([\w.]+\([^)]*\))\s*::\s*([A-Za-z]+(?:\s*\([^)]*\))?)/g,
