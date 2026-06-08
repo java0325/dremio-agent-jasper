@@ -14,11 +14,12 @@ const WELCOME_MESSAGE: ChatMessage = {
 // Dremio(Calcite) 예약어 목록 — 별칭으로 사용 시 큰따옴표 필요
 const DREMIO_RESERVED_ALIASES = new Set([
   "MONTH", "YEAR", "DAY", "HOUR", "MINUTE", "SECOND",
-  "DATE", "TIME", "TIMESTAMP", "INTERVAL",
+  "DATE", "TIME", "TIMESTAMP", "INTERVAL", "PERIOD",
   "VALUE", "VALUES", "COUNT", "SUM", "AVG", "MAX", "MIN",
   "TYPE", "LEVEL", "POSITION", "SIZE", "NAME", "KEY", "INDEX",
   "RANK", "ROW", "TABLE", "VIEW", "SET", "MATCH", "FORMAT",
   "REPLACE", "TRIM", "CAST", "CONVERT", "TRANSLATE",
+  "CURRENT", "NEXT", "PREV", "LEAD", "LAG", "LEFT", "RIGHT",
 ]);
 
 /** SELECT 절을 최상위 콤마로 분리해 한글/예약어 별칭 → 컬럼 위치 맵 반환 */
@@ -145,6 +146,9 @@ function sanitizeSQL(sql: string): string {
     /\bCAST\s*\(([^)]*?)\bAS\s+"([A-Za-z]+)"\s*\)/gi,
     (_m, expr, type) => `CAST(${expr.trim()} AS ${type})`,
   );
+
+  // ── 4b. LIMIT (subquery/expression) → LIMIT 20 자동교정 ──
+  result = result.replace(/\bLIMIT\s*\([\s\S]*$/gi, "LIMIT 20");
 
   // ── 5. GROUP BY 안의 집계함수 제거 ──
   result = result.replace(

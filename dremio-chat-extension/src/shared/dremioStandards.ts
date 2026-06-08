@@ -30,9 +30,14 @@ DREMIO SQL RULES (must follow strictly):
 - status filter: use lowercase values ('completed', 'pending') — NOT 'COMPLETED', 'SHIPPED'
 - Do NOT add NULLS LAST to ORDER BY — unnecessary in Dremio
 - EXTRACT(YEAR FROM col), EXTRACT(MONTH FROM col) are valid in Dremio
-  But alias AS year / AS month are reserved words — use non-reserved aliases:
-  EXTRACT(YEAR FROM o.order_date) AS sale_year  ← safe
-  EXTRACT(YEAR FROM o.order_date) AS year       ← reserved, system auto-corrects to ordinal
+  But alias AS year / AS month / AS period are reserved words — use non-reserved aliases:
+  EXTRACT(YEAR FROM o.order_date) AS sale_year   ← safe
+  TO_CHAR(o.order_date, 'YYYY-MM') AS order_period ← safe  (NOT AS period)
+  EXTRACT(YEAR FROM o.order_date) AS year        ← reserved, system auto-corrects to ordinal
+- LIMIT (subquery) or LIMIT (expression) are NOT valid — system auto-replaces with LIMIT 20
+  Use a fixed integer: LIMIT 10, LIMIT 20, LIMIT 50
+- orders table has NO product_id column — to join products, always go through order_items:
+  orders → order_items (oi.order_id = o.order_id) → products (p.product_id = oi.product_id)
 `.trim();
 
 // ────────────────────────────────────────────────────────────
