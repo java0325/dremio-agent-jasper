@@ -26,6 +26,9 @@ DREMIO SQL RULES (must follow strictly):
 - RANK() OVER: PARTITION BY time dimension only (not by category). ORDER BY the aggregated metric DESC
   Correct: RANK() OVER (PARTITION BY TO_CHAR(o.order_date,'YYYY-MM') ORDER BY SUM(oi.quantity*oi.unit_price) DESC)
 - ORDER BY must reference column aliases defined in SELECT, not bare reserved words
+- Schema path must be "SampleSalesDB"."sales".tablename — schema is "sales" not "sale"
+- status filter: use lowercase values ('completed', 'pending') — NOT 'COMPLETED', 'SHIPPED'
+- Do NOT add NULLS LAST to ORDER BY — unnecessary in Dremio
 `.trim();
 
 // ────────────────────────────────────────────────────────────
@@ -74,6 +77,9 @@ Key rules:
 - For sales amount: SUM(oi.quantity * oi.unit_price)
 - For month grouping: GROUP BY TO_CHAR(o.order_date, 'YYYY-MM')
 - COUNT(DISTINCT o.order_id) for order count — always qualified
+- Schema name is "sales" (NOT "sale") — "SampleSalesDB"."sales".tablename
+- Actual status values in orders: 'completed', 'pending' (lowercase, no 'COMPLETED'/'SHIPPED')
+- NULLS LAST is not needed — Dremio handles nulls automatically
 - Standard join pattern:
     FROM "SampleSalesDB"."sales".orders o
     JOIN "SampleSalesDB"."sales".order_items oi ON o.order_id = oi.order_id
@@ -130,6 +136,22 @@ FROM "SampleSalesDB"."sales".order_items oi
 JOIN "SampleSalesDB"."sales".products p ON oi.product_id = p.product_id
 GROUP BY p.product_name, p.category
 ORDER BY total_revenue DESC
+LIMIT 20`.trim(),
+
+  /** 연도-월별 카테고리 판매 (EXTRACT 방식) [검증완료] */
+  yearMonthCategoryRank: `
+SELECT
+  EXTRACT(YEAR FROM o.order_date) AS sale_year,
+  TO_CHAR(o.order_date, 'MM') AS sale_month,
+  p.category AS category_name,
+  SUM(oi.quantity * oi.unit_price) AS total_sales_amount,
+  COUNT(DISTINCT o.order_id) AS order_count
+FROM "SampleSalesDB"."sales".orders o
+JOIN "SampleSalesDB"."sales".order_items oi ON o.order_id = oi.order_id
+JOIN "SampleSalesDB"."sales".products p ON oi.product_id = p.product_id
+WHERE o.status = 'completed'
+GROUP BY EXTRACT(YEAR FROM o.order_date), TO_CHAR(o.order_date, 'MM'), p.category
+ORDER BY sale_year DESC, total_sales_amount DESC
 LIMIT 20`.trim(),
 
   /** 고객별 구매 실적 */

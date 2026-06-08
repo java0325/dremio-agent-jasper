@@ -84,6 +84,10 @@ function sanitizeSQL(sql: string): string {
     .replace(/[\uAC00-\uD7A3]+/g, "")
     .replace(/,(\s*)(FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)\b/gi, " $2")
     .replace(/\n{3,}/g, "\n\n")
+    // ── 1a. 스키마 오타 자동교정: "sale". → "sales". ──
+    .replace(/"SampleSalesDB"\s*\.\s*"sale"\s*\./gi, '"SampleSalesDB"."sales".')
+    // ── 1b. ORDER BY ... NULLS LAST/FIRST 제거 (Dremio 불필요) ──
+    .replace(/\bNULLS\s+(LAST|FIRST)\b/gi, "")
     .trim();
 
   // ── 2. AS 예약어 → 큰따옴표 ──
