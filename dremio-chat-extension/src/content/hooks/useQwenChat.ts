@@ -118,6 +118,9 @@ function sanitizeSQL(sql: string): string {
     .replace(/"SampleSalesDB"\s*\.\s*"sale"\s*\./gi, '"SampleSalesDB"."sales".')
     // ── 1b. ORDER BY ... NULLS LAST/FIRST 제거 (Dremio 불필요) ──
     .replace(/\bNULLS\s+(LAST|FIRST)\b/gi, "")
+    // ── 1c. 존재하지 않는 alias i.item_id 자동교정 ──
+    .replace(/\bCOUNT\s*\(\s*DISTINCT\s+i\.item_id\s*\)\s+AS\s+order_count\b/gi, "COUNT(DISTINCT o.order_id) AS order_count")
+    .replace(/\bi\.item_id\b/gi, "oi.item_id")
     .trim();
 
   // ── 2. AS 예약어 → 큰따옴표 ──

@@ -34,6 +34,10 @@ DREMIO SQL RULES (must follow strictly):
   EXTRACT(YEAR FROM o.order_date) AS sale_year   ← safe
   TO_CHAR(o.order_date, 'YYYY-MM') AS order_period ← safe  (NOT AS period)
   EXTRACT(YEAR FROM o.order_date) AS year        ← reserved, system auto-corrects to ordinal
+- For Korean requests "년도-월별", "연도-월별", "년월별", "월별": ALWAYS output a single YYYY-MM column
+  Correct: TO_CHAR(o.order_date, 'YYYY-MM') AS year_month
+  WRONG: EXTRACT(YEAR FROM o.order_date) AS year_month (month is missing)
+  WRONG: separate year + month columns unless the user explicitly asks for separate columns
 - LIMIT (subquery) or LIMIT (expression) are NOT valid — system auto-replaces with LIMIT 20
   Use a fixed integer: LIMIT 10, LIMIT 20, LIMIT 50
 - orders table has NO product_id column — to join products, always go through order_items:
@@ -82,9 +86,10 @@ SampleSalesDB schema hints (use ONLY these exact column names, ALWAYS with table
 Key rules:
 - quantity, unit_price → oi (order_items) only, NOT o (orders)
 - item_id → oi.item_id only, NEVER o.item_id
+- Alias "i" is not used in this schema. NEVER write i.item_id. Use oi.item_id, or for order counts use o.order_id.
 - order_id exists in BOTH orders and order_items — always qualify: o.order_id or oi.order_id
 - For sales amount: SUM(oi.quantity * oi.unit_price)
-- For month grouping: GROUP BY TO_CHAR(o.order_date, 'YYYY-MM')
+- For year-month/month grouping: SELECT TO_CHAR(o.order_date, 'YYYY-MM') AS year_month and GROUP BY TO_CHAR(o.order_date, 'YYYY-MM')
 - COUNT(DISTINCT o.order_id) for order count — always qualified
 - Schema name is "sales" (NOT "sale") — "SampleSalesDB"."sales".tablename
 - Actual status values in orders: 'completed', 'pending' (lowercase, no 'COMPLETED'/'SHIPPED')
