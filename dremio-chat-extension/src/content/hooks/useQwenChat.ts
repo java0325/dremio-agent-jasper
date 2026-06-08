@@ -28,8 +28,13 @@ function buildAliasPositionMap(selectClause: string): Map<string, number> {
   let depth = 0, start = 0;
   for (let i = 0; i < selectClause.length; i++) {
     const ch = selectClause[i];
-    if (ch === "(" || ch === "'") depth++;
-    if (ch === ")" || (ch === "'" && depth > 0)) depth--;
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    else if (ch === "'" ) {
+      // 작은따옴표 문자열 건너뜀
+      i++;
+      while (i < selectClause.length && selectClause[i] !== "'") i++;
+    }
     if (ch === "," && depth === 0) {
       cols.push(selectClause.slice(start, i).trim());
       start = i + 1;
@@ -40,13 +45,35 @@ function buildAliasPositionMap(selectClause: string): Map<string, number> {
     // 한글 별칭
     const mKorean = col.match(/\bAS\s+([\uAC00-\uD7A3]\S*)\s*$/i);
     if (mKorean) { map.set(mKorean[1], idx + 1); return; }
-    // 영어 예약어 별칭 (month, year, date 등) — ORDER BY에서 오류 방지
+    // 영어 예약어 별칭 (month, year, date, rank 등) — ORDER BY에서 오류 방지
     const mEnglish = col.match(/\bAS\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/i);
     if (mEnglish && DREMIO_RESERVED_ALIASES.has(mEnglish[1].toUpperCase())) {
       map.set(mEnglish[1], idx + 1);
     }
   });
   return map;
+}
+
+/**
+ * SELECT 절만 추출 — EXTRACT(YEAR FROM ...) 내부의 FROM을 무시하고
+ * 최상위 FROM 키워드 위치를 찾음
+ */
+function extractSelectClause(sql: string): string {
+  const upper = sql.toUpperCase();
+  const selectIdx = upper.search(/\bSELECT\b/);
+  if (selectIdx === -1) return "";
+  let depth = 0, i = selectIdx + 6;
+  while (i < sql.length) {
+    const ch = sql[i];
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    else if (ch === "'" ) { i++; while (i < sql.length && sql[i] !== "'") i++; }
+    else if (depth === 0 && upper.slice(i).match(/^FROM\b/)) {
+      return sql.slice(selectIdx + 6, i);
+    }
+    i++;
+  }
+  return sql.slice(selectIdx + 6);
 }
 
 /** SQL에서 한글 포함 주석/별칭 제거 + 정리 */
@@ -56,10 +83,12 @@ function sanitizeSQL(sql: string): string {
     .replace(/--[^\n]*/g, "")
     .replace(/\/\*[\s\S]*?\*\//g, "");
 
-  // ── 0. 한글 ORDER BY 별칭 → 컬럼 순서 번호로 대체 ──
-  const selectMatch = result.match(/\bSELECT\b([\s\S]*?)\bFROM\b/i);
-  if (selectMatch) {
-    const posMap = buildAliasPositionMap(selectMatch[1]);
+  // ── 0. 한글/예약어 ORDER BY 별칭 → 컬럼 순서 번호로 대체 ──
+  // extractSelectClause로 EXTRACT(YEAR FROM ...) 내부 FROM을 무시
+  const selectClause = extractSelectClause(result) ||
+    (result.match(/\bSELECT\b([\s\S]*?)\bFROM\b/i)?.[1] ?? "");
+  if (selectClause) {
+    const posMap = buildAliasPositionMap(selectClause);
     if (posMap.size > 0) {
       result = result.replace(
         /\bORDER\s+BY\b([\s\S]*?)(?=LIMIT\b|OFFSET\b|FETCH\b|$|;)/gi,

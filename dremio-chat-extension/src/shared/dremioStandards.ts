@@ -29,6 +29,10 @@ DREMIO SQL RULES (must follow strictly):
 - Schema path must be "SampleSalesDB"."sales".tablename — schema is "sales" not "sale"
 - status filter: use lowercase values ('completed', 'pending') — NOT 'COMPLETED', 'SHIPPED'
 - Do NOT add NULLS LAST to ORDER BY — unnecessary in Dremio
+- EXTRACT(YEAR FROM col), EXTRACT(MONTH FROM col) are valid in Dremio
+  But alias AS year / AS month are reserved words — use non-reserved aliases:
+  EXTRACT(YEAR FROM o.order_date) AS sale_year  ← safe
+  EXTRACT(YEAR FROM o.order_date) AS year       ← reserved, system auto-corrects to ordinal
 `.trim();
 
 // ────────────────────────────────────────────────────────────
