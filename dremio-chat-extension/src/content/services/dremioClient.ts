@@ -1,4 +1,4 @@
-const DREMIO = "http://localhost:9047";
+const DREMIO = "http://localhost:9046";
 
 // ─── API 타입 ─────────────────────────────────────────
 type CatalogChild = {

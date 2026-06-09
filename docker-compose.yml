@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: dremio_pass
       POSTGRES_DB: sample_sales
     ports:
-      - "5432:5432"
+      - "5431:5432"
     volumes:
       - ./sample-db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
@@ -16,3 +16,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  dremio-agent:
+    image: dremio/dremio-oss
+    container_name: dremio-agent
+    restart: unless-stopped
+    ports:
+      - "9046:9047"
+      - "31009:31010"
+      - "45677:45678"
+    volumes:
+      - dremio_agent_data:/opt/dremio/data
+    depends_on:
+      sample-postgres:
+        condition: service_healthy
+
+volumes:
+  dremio_agent_data:

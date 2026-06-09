@@ -356,25 +356,48 @@ function MessageContent({ content }: { content: string }) {
         // 구분선으로 시작하는 결과 섹션
         if (part.startsWith("---\n")) {
           const inner = part.slice(4);
+          const lines = inner.split("\n");
+          const titleLine = lines[0] ?? "";
+          const bodyLines = lines.slice(1).filter((l) => l.trim());
+          const isQueryResult = titleLine.includes("쿼리 실행 결과");
+          const copyText = [titleLine, ...bodyLines].filter(Boolean).join("\n");
+
           // 마크다운 테이블 포함 여부 확인
           if (inner.includes("| --- |") || inner.match(/\|.*\|.*\|/)) {
-            const lines = inner.split("\n");
-            const titleLine = lines[0];
-            const tableLines = lines.slice(1).filter((l) => l.trim());
+            const tableLines = bodyLines;
             return (
               <div key={i} className="rounded-lg bg-white border border-slate-200 overflow-hidden">
                 {titleLine && (
-                  <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-700">
-                    {titleLine.replace(/\*\*/g, "")}
+                  <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-slate-50 border-b border-slate-200">
+                    <span className="text-xs font-semibold text-slate-700">
+                      {titleLine.replace(/\*\*/g, "")}
+                    </span>
                   </div>
                 )}
                 <TableRenderer lines={tableLines} />
+                {isQueryResult && (
+                  <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-3 py-1.5">
+                    <CopyButton text={copyText} label="복사" />
+                  </div>
+                )}
               </div>
             );
           }
           return (
-            <div key={i} className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 whitespace-pre-wrap">
-              {inner}
+            <div key={i} className="rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 overflow-hidden">
+              {titleLine && (
+                <div className="border-b border-amber-100 bg-amber-50/80 px-3 py-1.5">
+                  <span className="font-semibold">{titleLine.replace(/\*\*/g, "")}</span>
+                </div>
+              )}
+              <div className="whitespace-pre-wrap px-3 py-2">
+                {titleLine ? bodyLines.join("\n") : inner}
+              </div>
+              {isQueryResult && (
+                <div className="flex justify-end border-t border-amber-100 bg-amber-50/80 px-3 py-1.5">
+                  <CopyButton text={copyText} label="복사" />
+                </div>
+              )}
             </div>
           );
         }
@@ -431,6 +454,55 @@ function TableRenderer({ lines }: { lines: string[] }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copyState, setCopyState] = useState<"idle" | "ok" | "fail">("idle");
+
+  const fallbackCopy = (value: string): boolean => {
+    const ta = document.createElement("textarea");
+    ta.value = value;
+    ta.setAttribute("readonly", "true");
+    ta.style.position = "fixed";
+    ta.style.top = "-9999px";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    document.body.removeChild(ta);
+    return ok;
+  };
+
+  const handleCopy = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        setCopyState("ok");
+      } else {
+        setCopyState(fallbackCopy(text) ? "ok" : "fail");
+      }
+    } catch {
+      setCopyState(fallbackCopy(text) ? "ok" : "fail");
+    }
+    window.setTimeout(() => setCopyState("idle"), 1500);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleCopy()}
+      className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+      title={label}
+    >
+      {copyState === "ok" ? "복사됨" : copyState === "fail" ? "복사실패" : label}
+    </button>
   );
 }
 

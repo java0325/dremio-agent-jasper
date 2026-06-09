@@ -8,7 +8,7 @@
 |------|-----|
 | DB 종류 | PostgreSQL 16 (Docker) |
 | 컨테이너명 | `sample-postgres` |
-| 포트 | `5432` |
+| 포트 | `5431` |
 | 데이터베이스 | `sample_sales` |
 | 사용자 / 비밀번호 | `dremio_user` / `dremio_pass` |
 | Dremio 소스명 | `SampleSalesDB` |

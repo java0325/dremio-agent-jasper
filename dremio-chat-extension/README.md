@@ -1,6 +1,6 @@
 # Dremio Chat Chrome Extension + Qwen3.5 sLLM
 
-`localhost:9047` Dremio 페이지에서 챗봇 UI를 제공하고, **Ollama로 로컬 실행한 Qwen3.5 sLLM** 과 대화합니다.
+`localhost:9046` Dremio 페이지에서 챗봇 UI를 제공하고, **Ollama로 로컬 실행한 Qwen3.5 sLLM** 과 대화합니다.
 
 ## 아키텍처
 
@@ -11,7 +11,7 @@
                 │
         [background service worker]
                 │
-                └── fetch → Ollama API (localhost:11434)
+                └── fetch → Ollama API (localhost:11433)
                                     │
                               Qwen3.5 sLLM
 ```
@@ -57,7 +57,7 @@ npm run build
 ### 4. 사용
 
 1. Ollama 앱 실행 (또는 `ollama serve`)
-2. `http://localhost:9047` 접속
+2. `http://localhost:9046` 접속
 3. 좌측 하단 챗봇 버튼 클릭
 4. 헤더에 `Qwen qwen3.5:4b` 연결 상태 확인 후 대화
 
@@ -86,7 +86,7 @@ npm run dev
 | "Ollama 연결 안 됨" | Ollama 앱 실행 확인 |
 | "모델이 없습니다" | `ollama pull qwen3.5:4b` |
 | 응답이 느림 | 더 작은 모델 사용 (`qwen3.5:2b`) |
-| UI가 안 보임 | URL이 `localhost:9047` 인지 확인 |
+| UI가 안 보임 | URL이 `localhost:9046` 인지 확인 |
 
 ## 파일 구조
 

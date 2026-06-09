@@ -1,4 +1,4 @@
-import { buildSystemPrompt, DEFAULT_QWEN_MODEL, OLLAMA_BASE_URL } from "../shared/config";
+import { buildSystemPrompt, DEFAULT_QWEN_MODEL, OLLAMA_BASE_URLS } from "../shared/config";
 import type {
   BackgroundRequest,
   ChatStreamChunk,
@@ -21,10 +21,18 @@ type OllamaStreamLine = {
 };
 
 async function fetchAvailableModels(): Promise<string[]> {
-  const res = await fetch(`${OLLAMA_BASE_URL}/api/tags`);
-  if (!res.ok) throw new Error(`Ollama 응답 오류 (${res.status})`);
-  const data = (await res.json()) as OllamaTagsResponse;
-  return (data.models ?? []).map((m) => m.name);
+  let lastError: unknown;
+  for (const baseUrl of OLLAMA_BASE_URLS) {
+    try {
+      const res = await fetch(`${baseUrl}/api/tags`);
+      if (!res.ok) throw new Error(`Ollama 응답 오류 (${res.status})`);
+      const data = (await res.json()) as OllamaTagsResponse;
+      return (data.models ?? []).map((m) => m.name);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Ollama에 연결할 수 없습니다.");
 }
 
 async function streamChat(
@@ -45,11 +53,23 @@ async function streamChat(
     options: { temperature: 0.6, num_predict: 2048 },
   };
 
-  const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  let response: Response | undefined;
+  let lastError: unknown;
+  for (const baseUrl of OLLAMA_BASE_URLS) {
+    try {
+      response = await fetch(`${baseUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!response) {
+    throw lastError instanceof Error ? lastError : new Error("Ollama에 연결할 수 없습니다.");
+  }
 
   if (!response.ok) {
     const text = await response.text();

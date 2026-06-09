@@ -10,8 +10,9 @@ if ! command -v ollama >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; then
-  echo "Ollama 서버가 실행 중이 아닙니다. Ollama 앱을 실행하거나 'ollama serve'를 시작하세요."
+if ! curl -sf http://localhost:11433/api/tags >/dev/null 2>&1; then
+  echo "Ollama 서버가 실행 중이 아닙니다."
+  echo "다음 명령으로 시작하세요: OLLAMA_HOST=0.0.0.0:11433 OLLAMA_ORIGINS='chrome-extension://*' ollama serve"
   exit 1
 fi
 
@@ -22,4 +23,4 @@ echo "==> 설치된 모델 목록"
 ollama list
 
 echo ""
-echo "완료! Chrome 익스텐션을 빌드/새로고침한 뒤 http://localhost:9047 에서 챗봇을 사용하세요."
+echo "완료! Chrome 익스텐션을 빌드/새로고침한 뒤 http://localhost:9046 에서 챗봇을 사용하세요."

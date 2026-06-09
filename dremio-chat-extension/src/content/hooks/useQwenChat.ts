@@ -121,6 +121,10 @@ function sanitizeSQL(sql: string): string {
     // ── 1c. 존재하지 않는 alias i.item_id 자동교정 ──
     .replace(/\bCOUNT\s*\(\s*DISTINCT\s+i\.item_id\s*\)\s+AS\s+order_count\b/gi, "COUNT(DISTINCT o.order_id) AS order_count")
     .replace(/\bi\.item_id\b/gi, "oi.item_id")
+    // ── 1d. 이중 점(..+) 수정: 한글 제거 후 발생하는 "schema".."table" 패턴 ──
+    .replace(/\.\.+/g, ".")
+    // ── 1e. 고립 점 제거: 공백/콤마/( 뒤의 .식별자 → 식별자 (한글 alias 제거 잔재) ──
+    .replace(/(?<=[,(\s])\.(?=[A-Za-z_"])/g, "")
     .trim();
 
   // ── 2. AS 예약어 → 큰따옴표 ──
@@ -204,6 +208,8 @@ function extractSQL(text: string): string | null {
 
 /** SQL 실행 가능 여부 검증 */
 function validateSQL(sql: string): string | null {
+  // 이중 점(.. 또는 .. .) → sanitize 후에도 남아 있으면 차단
+  if (/\.\./.test(sql)) return "SQL 경로에 이중 점(..)이 포함되어 있습니다. 스키마 경로를 확인하세요";
   // OVER 뒤에 ( 없음 → 미완성 윈도우 함수
   if (/\bOVER\b(?!\s*\()/i.test(sql)) return "윈도우 함수가 불완전합니다 (OVER 뒤에 ()가 없습니다)";
   // SELECT 바로 FROM → 컬럼 없음

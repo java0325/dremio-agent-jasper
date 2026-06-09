@@ -1,11 +1,12 @@
 import { buildStandardRulesSection } from "./dremioStandards";
 
-export const OLLAMA_BASE_URL = "http://localhost:11434";
+export const OLLAMA_BASE_URLS = ["http://127.0.0.1:11433", "http://localhost:11433"] as const;
+export const OLLAMA_BASE_URL = OLLAMA_BASE_URLS[0];
 
 /** sLLM 기본 모델. RAM/VRAM에 따라 qwen3.5:0.8b | 2b | 4b | 9b 로 변경 가능 */
 export const DEFAULT_QWEN_MODEL = "qwen3.5:4b";
 
-const BASE_SYSTEM_PROMPT = `You are Dremio Assistant, a helpful data analyst copilot embedded in the Dremio UI (localhost:9047).
+const BASE_SYSTEM_PROMPT = `You are Dremio Assistant, a helpful data analyst copilot embedded in the Dremio UI (localhost:9046).
 
 Your role:
 - Help users write and debug SQL queries for Dremio
